@@ -638,9 +638,11 @@ void nwayBacktrack(Configuration& conf, List<Square>& squares,
 
   List<Packing>* pack;
   enumerateCOAs(conf, squares, branchCoas);
-  std::cout << n << " branch size " << branchCoas.length << std::endl;
 
   if (!helpers[n - 1]->useSubprocesses) {
+    std::cout << "conf.length=" << lastPackBackup->length << ", n=" << n
+              << " found branch size " << branchCoas.length << ". No subprocess"
+              << std::endl;
     FOREACH(currBranchCoa, &branchCoas, {
       conf.packings->length = index;
       helpers[n - 2]->totalArea =
@@ -649,9 +651,6 @@ void nwayBacktrack(Configuration& conf, List<Square>& squares,
       pack->current = currBranchCoa->current;
       helpers[n - 2]->lastConfPacking = pack;
       currBranchCoa->current.square->packed = true;
-      if (currBranchCoa->index % 100 == 0) {
-        std::cout << n << " FOREACH " << n - 1 << " backtrack" << std::endl;
-      }
       nwayBacktrack(conf, squares, helpers, n - 1);
       FOREACH(pack, conf.packings, {
         if (pack->index > index) pack->current.square->packed = false;
@@ -662,7 +661,10 @@ void nwayBacktrack(Configuration& conf, List<Square>& squares,
       // index++;
     });
   } else {
-    int limit = 2;
+    std::cout << "conf.length=" << lastPackBackup->length << ", n=" << n
+              << " found branch size " << branchCoas.length
+              << ". USING subprocess" << std::endl;
+    int limit = 96;
     int closed_until = -1;
     int* pipes = new int[branchCoas.length << 1];
     int* results = new int[branchCoas.length << 1];  // we use only even
@@ -681,9 +683,6 @@ void nwayBacktrack(Configuration& conf, List<Square>& squares,
         pack->current = currBranchCoa->current;
         helpers[n - 2]->lastConfPacking = pack;
         currBranchCoa->current.square->packed = true;
-        if (currBranchCoa->index % 100 == 0) {
-          std::cout << n << " FOREACH " << n - 1 << " backtrack" << std::endl;
-        }
         nwayBacktrack(conf, squares, helpers, n - 1);
         FOREACH(pack, conf.packings, {
           if (pack->index > index) pack->current.square->packed = false;
@@ -730,11 +729,10 @@ void nwayBacktrack(Configuration& conf, List<Square>& squares,
           results[(currBranchCoa->index - 1) << 1];
       // assert(currBranchCoa->current.metrics.backtrackingValue == 12);
     });
+    // std::cout << "asserted all" << std::endl;
 
     delete[] pipes;
     delete[] results;
-
-    std::cout << "asserted all" << std::endl;
   }
 
   conf.packings->length = index;
@@ -784,7 +782,7 @@ int main(void) {
   // helpers.lastConfPacking = p;
   // helpers.totalArea = 1;
 
-  unsigned int n = 2;
+  unsigned int n = 3;
   vector<BacktrackHelpers*> helpersVector;
   for (size_t i = 0; i < n; i++) {
     BacktrackHelpers* h = new BacktrackHelpers;
@@ -794,7 +792,8 @@ int main(void) {
   // onewayBacktrack(conf, squares, helpers);
   helpersVector[n - 1]->totalArea = 0;
   helpersVector[n - 1]->lastConfPacking = conf.packings;
-  helpersVector[n - 1]->useSubprocesses = true;
+  helpersVector[n - 1]->useSubprocesses = false;
+  helpersVector[n - 2]->useSubprocesses = true;
   nwayBacktrack(conf, squares, helpersVector, n);
 
   // cout << "here4" << endl;
